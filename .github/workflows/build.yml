@@ -36,10 +36,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-#
-#      - name: Deploy to production
-#        uses: fjogeleit/http-request-action@v1
-#        with:
-#          url: https://semaphore.ttt.trojsten.sk/api/project/1/tasks
-#          data: '{"template_id": 11, "environment": "{\"minsky_train_tag\": \"${{ github.ref_name }}\"}"}'
-#          bearerToken: ${{ secrets.SEMAPHORE_KEY }}
+
+      - name: Deploy to production
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: https://semaphore.ttt.trojsten.sk/api/project/1/tasks
+          data: '{"template_id": 12, "environment": "{\"buzerator_tag\": \"${{ github.ref_name }}\"}"}'
+          bearerToken: ${{ secrets.SEMAPHORE_KEY }}
