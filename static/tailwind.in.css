@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.btn {
+    @apply rounded-md px-2.5 py-1.5 text-sm font-semibold shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
+}
+
+.btn-green {
+    @apply bg-green-600 text-white hover:bg-green-500 focus-visible:outline-green-600;
+}
+
+.btn-blue {
+    @apply bg-blue-600 text-white hover:bg-blue-500 focus-visible:outline-blue-600;
+}
+
+.btn-red {
+    @apply bg-red-600 text-white hover:bg-red-500 focus-visible:outline-red-600;
+}
+
+.form-control {
+    @apply block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6;
+}

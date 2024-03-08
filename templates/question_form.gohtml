@@ -1,0 +1,59 @@
+{{define "title"}}{{if .question}}Upraviť buzeráciu{{else}}Nová buzerácia{{end}}{{end}}
+{{define "body"}}
+    <h2 class="font-bold text-3xl mb-6">{{template "title" .}}</h2>
+
+    <form method="post" class="space-y-6">
+        <div>
+            <label class="block text-sm font-semibold leading-6 text-gray-900">Ľudia</label>
+            <div class="space-y-1 mt-2">
+                {{range .users}}
+                <div class="relative flex items-start">
+                    <div class="flex h-6 items-center">
+                        <input id="user-{{.ID}}" name="users" value="{{.ID}}" required type="checkbox"
+                               class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" {{if .Selected}}checked{{end}}>
+                    </div>
+
+                    <label for="user-{{.ID}}" class="ml-3 text-sm leading-6 font-medium text-gray-900">{{.Name}}</label>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <div>
+            <label for="message" class="block text-sm font-semibold leading-6 text-gray-900">Text správy</label>
+            <div class="mt-2">
+                <textarea name="message" id="message" class="form-control" required rows="5">{{.question.Message}}</textarea>
+            </div>
+        </div>
+
+        <div>
+            <label for="cron" class="block text-sm font-semibold leading-6 text-gray-900">Plán spúšťania</label>
+            <div class="mt-2">
+                <input type="text" id="cron" name="cron" class="form-control" required placeholder="0 8 mon * *" value="{{.question.Cron}}">
+            </div>
+        </div>
+
+        <div>
+            <div class="relative flex items-start">
+                <div class="flex h-6 items-center">
+                    <input id="active" name="active" value="1" type="checkbox"
+                           class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" {{if .question.IsActive}}checked{{end}}>
+                </div>
+
+                <label for="active" class="ml-3 text-sm leading-6 font-medium text-gray-900">Aktívna</label>
+            </div>
+        </div>
+
+        <div>
+            <button type="submit" class="btn btn-blue">{{if .question}}Uložiť{{else}}Vytvoriť{{end}}</button>
+        </div>
+    </form>
+
+    {{if .question}}
+        <hr class="my-4">
+
+        <form action="{{.URLPrefix}}/invoke/{{.question.ID}}/" method="post">
+            <button type="submit" class="btn btn-red">Spustiť teraz</button>
+        </form>
+    {{end}}
+{{end}}

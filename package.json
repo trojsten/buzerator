@@ -1,0 +1,10 @@
+{
+  "name": "buzerator",
+  "scripts": {
+    "build": "tailwindcss -i ./static/tailwind.in.css -o ./static/app.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "tailwindcss": "^3.4.1"
+  }
+}

@@ -1,0 +1,17 @@
+{{define "title"}}Zoznam buzerácií{{end}}
+{{define "body"}}
+    <h2 class="font-bold text-3xl mb-4">Zoznam buzerácií</h2>
+
+    <div class="space-y-2 mb-4">
+        {{range .questions}}
+        <a href="{{$.URLPrefix}}/edit/{{.ID}}/" class="hover:bg-gray-100 py-3 px-4 rounded relative block">
+            <div class="text-sm text-gray-900/75 mb-2">
+                <span class="font-mono float-right py-1 px-2 ml-2 mb-2 {{if .IsActive}}bg-blue-600/20 text-blue-700{{else}}bg-gray-600/20 text-gray-700{{end}} rounded">{{.Cron}}</span>
+                {{.Message}}
+            </div>
+        </a>
+        {{end}}
+    </div>
+
+    <a href="{{.URLPrefix}}/new/" class="btn btn-green">Nová buzerácia</a>
+{{end}}
