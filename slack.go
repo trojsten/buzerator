@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/charmbracelet/log"
 	"github.com/slack-go/slack"
@@ -130,6 +131,18 @@ func handleCommand(evt *socketmode.Event, client *socketmode.Client) {
 	msg := fmt.Sprintf("Nastavenia tohto kanálu nájdeš tu: %s/%s/%s/", App.config.RootURL, ev.ChannelID, token)
 	_, err := client.PostEphemeral(ev.ChannelID, ev.UserID, slack.MsgOptionText(msg, false))
 	if err != nil {
+		var slackErr slack.SlackErrorResponse
+		ok := errors.As(err, &slackErr)
+		
+		if ok && (slackErr.Err == "channel_not_found" || slackErr.Err == "not_in_channel") {
+			log.Warn("Received command from a channel I am not in.", "channel", ev.ChannelID, "user", ev.UserID)
+			_, _, err := client.PostMessage(ev.UserID, slack.MsgOptionText("⚠️ Predtým, ako môžeš použiť `/buzerator` v nejakom kanáli, musíš ma doňho pridať.", false))
+			if err != nil {
+				log.Error("Could not send command not_in_channel notice.", "channel", ev.ChannelID, "user", ev.UserID)
+			}
+			return
+		}
+
 		log.Error("Could not send command reply.", "err", err)
 	}
 }
