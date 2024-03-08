@@ -1,0 +1,45 @@
+name: Create and publish a Docker image
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@1f401f745bf57e30b3a2800ad308a87d2ebdf14b
+        with:
+          registry: registry.3sten.sk
+          username: github
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@62339db73c56dd749060f65a6ebb93a6e056b755
+        with:
+          images: registry.3sten.sk/buzerator
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@fdf7f43ecf7c1a5c7afe936410233728a8c2d9c2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+#
+#      - name: Deploy to production
+#        uses: fjogeleit/http-request-action@v1
+#        with:
+#          url: https://semaphore.ttt.trojsten.sk/api/project/1/tasks
+#          data: '{"template_id": 11, "environment": "{\"minsky_train_tag\": \"${{ github.ref_name }}\"}"}'
+#          bearerToken: ${{ secrets.SEMAPHORE_KEY }}
