@@ -9,7 +9,7 @@
                 {{range .users}}
                 <div class="relative flex items-start">
                     <div class="flex h-6 items-center">
-                        <input id="user-{{.ID}}" name="users" value="{{.ID}}" required type="checkbox"
+                        <input id="user-{{.ID}}" name="users" value="{{.ID}}" type="checkbox"
                                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" {{if .Selected}}checked{{end}}>
                     </div>
 
@@ -29,7 +29,7 @@
         <div>
             <label for="cron" class="block text-sm font-semibold leading-6 text-gray-900">Plán spúšťania</label>
             <div class="mt-2">
-                <input type="text" id="cron" name="cron" class="form-control" required placeholder="0 8 mon * *" value="{{.question.Cron}}">
+                <input type="text" id="cron" name="cron" class="form-control" required placeholder="0 8 * * mon" value="{{.question.Cron}}">
             </div>
             <div class="mt-1 text-sm text-gray-900/75">
                 Pozri <a href="https://crontab.guru" class="underline text-blue-600 hover:text-blue-700" target="_blank">crontab.guru</a>.
