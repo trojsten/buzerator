@@ -69,6 +69,23 @@ func (s *scheduler) tickPeriodicCheck(now time.Time) {
 	}
 }
 
+func (s *scheduler) tickPing(now time.Time) {
+	due, err := s.gron.IsDue(pingCron, now)
+	if err != nil {
+		s.logger.Error("Error while checking cron.", "err", err)
+		return
+	}
+
+	if due {
+		s.logger.Info("Pinging all missing users.")
+		err = PingMissingUsers()
+		if err != nil {
+			s.logger.Error("Error while pinging users.", "err", err)
+			return
+		}
+	}
+}
+
 func RunScheduler() {
 	defer App.wg.Done()
 
