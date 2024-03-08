@@ -37,14 +37,14 @@ var templateFiles embed.FS
 func ServeUI() {
 	defer App.wg.Done()
 
+	if !App.config.Debug {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	ui := webUI{}
 	App.webUI = &ui
 	r := gin.New()
 	r.Use(gin.Recovery())
-
-	if !App.config.Debug {
-		gin.SetMode(gin.ReleaseMode)
-	}
 
 	r.HTMLRender = ui.newRenderer()
 	staticFs, err := fs.Sub(staticFiles, "static")
@@ -52,6 +52,7 @@ func ServeUI() {
 		log.Error("Cannot load static files.", "err", err)
 	}
 	r.StaticFS("/static/", http.FS(staticFs))
+	r.GET("/", ui.handleIndex)
 
 	g := r.Group("/:channel/:token/", ui.checkToken)
 	g.GET("/", ui.handleQuestionList)
@@ -113,6 +114,7 @@ func (w *webUI) createTemplate(files ...string) *template.Template {
 
 func (w *webUI) newRenderer() multitemplate.Renderer {
 	r := multitemplate.NewRenderer()
+	r.Add("index", w.createTemplate("templates/index.gohtml"))
 	r.Add("question_list", w.createTemplate("templates/base.gohtml", "templates/question_list.gohtml"))
 	r.Add("question_form", w.createTemplate("templates/base.gohtml", "templates/question_form.gohtml"))
 	return r
@@ -192,6 +194,10 @@ func (w *webUI) handleNewQuestion(ctx *gin.Context) {
 	}
 
 	w.render(ctx, "question_form", gin.H{"users": users})
+}
+
+func (w *webUI) handleIndex(ctx *gin.Context) {
+	w.render(ctx, "index", gin.H{})
 }
 
 type questionForm struct {

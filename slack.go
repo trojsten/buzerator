@@ -33,10 +33,46 @@ func ConnectSlack() {
 	socketmodeHandler.HandleEvents(slackevents.Message, handleMessage)
 	socketmodeHandler.HandleSlashCommand("/buzerator", handleCommand)
 
+	socketmodeHandler.Handle(socketmode.EventTypeConnecting, handleConnecting)
+	socketmodeHandler.Handle(socketmode.EventTypeConnected, handleConnected)
+	socketmodeHandler.Handle(socketmode.EventTypeHello, handleHello)
+	socketmodeHandler.Handle(socketmode.EventTypeIncomingError, handleError)
+	socketmodeHandler.Handle(socketmode.EventTypeConnectionError, handleConnError)
+
 	err = socketmodeHandler.RunEventLoop()
 	if err != nil {
 		log.Fatalf("Error while running event loop: %v\n", err)
 	}
+}
+
+func handleConnecting(evt *socketmode.Event, client *socketmode.Client) {
+	log.Debug("Connecting to Slack...")
+}
+
+func handleConnected(evt *socketmode.Event, client *socketmode.Client) {
+	log.Info("Connected to Slack.")
+}
+
+func handleHello(evt *socketmode.Event, client *socketmode.Client) {
+	log.Debug("Received 'hello' from Slack.")
+}
+
+func handleError(evt *socketmode.Event, client *socketmode.Client) {
+	ev, ok := evt.Data.(slack.IncomingEventError)
+	if !ok {
+		log.Warn("Invalid event data.", "evt", *evt)
+		return
+	}
+	log.Error("Incoming error from Slack.", "err", ev.Error())
+}
+
+func handleConnError(evt *socketmode.Event, client *socketmode.Client) {
+	ev, ok := evt.Data.(slack.ConnectionErrorEvent)
+	if !ok {
+		log.Warn("Invalid event data.", "evt", *evt)
+		return
+	}
+	log.Error("Connection error from Slack.", "err", ev.Error())
 }
 
 func handleMessage(evt *socketmode.Event, client *socketmode.Client) {
