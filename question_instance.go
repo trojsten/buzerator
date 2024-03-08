@@ -22,11 +22,12 @@ var Greetings = []string{
 }
 
 type QuestionInstance struct {
-	Question   *Question `json:"-"`
-	QuestionID uint64
-	Timestamp  string
-	Responses  map[string]bool
-	Greeting   string
+	Question    *Question `json:"-"`
+	QuestionID  uint64
+	Timestamp   string
+	LastMessage string
+	Responses   map[string]bool
+	Greeting    string
 }
 
 func (qi *QuestionInstance) Message() string {
@@ -80,13 +81,15 @@ func (qi *QuestionInstance) PostMessage() error {
 	return nil
 }
 
-func (qi *QuestionInstance) HandleMessage(user string) error {
+func (qi *QuestionInstance) HandleMessage(user string, timestamp string) error {
 	alreadyReplied, expected := qi.Responses[user]
 	if !expected || alreadyReplied {
-		return nil
+		qi.LastMessage = timestamp
+		return qi.Save()
 	}
 
 	qi.Responses[user] = true
+	qi.LastMessage = timestamp
 	err := qi.Save()
 	if err != nil {
 		return err
@@ -99,6 +102,35 @@ func (qi *QuestionInstance) HandleMessage(user string) error {
 
 	_, err = App.slack.PostEphemeral(qi.Question.Channel, user, slack.MsgOptionText("Ďakujem! ❤️", false), slack.MsgOptionTS(qi.Timestamp))
 	return err
+}
+
+func (qi *QuestionInstance) CheckNewMessages() error {
+	cursor := ""
+	hasMore := true
+
+	for hasMore {
+		var messages []slack.Message
+		var err error
+		messages, hasMore, cursor, err = App.slack.GetConversationReplies(&slack.GetConversationRepliesParameters{
+			ChannelID: qi.Question.Channel,
+			Timestamp: qi.Timestamp,
+			Cursor:    cursor,
+			Oldest:    qi.LastMessage,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		for _, message := range messages {
+			err := qi.HandleMessage(message.User, message.Timestamp)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (qi *QuestionInstance) dbKey() []byte {

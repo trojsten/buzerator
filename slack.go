@@ -112,7 +112,7 @@ func handleMessage(evt *socketmode.Event, client *socketmode.Client) {
 		return
 	}
 
-	err = qi.HandleMessage(ev.User)
+	err = qi.HandleMessage(ev.User, ev.TimeStamp)
 	if err != nil {
 		logger.Error("Error while handling reply.", "err", err, "channel")
 	}

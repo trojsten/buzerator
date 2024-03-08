@@ -8,9 +8,12 @@ import (
 	"time"
 )
 
-func schedulerTick() {
-	logger := log.WithPrefix("scheduler")
-	logger.Debug("Running scheduler tick.")
+type scheduler struct {
+	logger *log.Logger
+	gron   gronx.Gronx
+}
+
+func (s *scheduler) tickNewQuestions(now time.Time) {
 	var questions []Question
 
 	err := App.db.View(func(tx *bolt.Tx) error {
@@ -28,15 +31,12 @@ func schedulerTick() {
 		})
 	})
 	if err != nil {
-		logger.Error("Cannot list questions.", "err", err)
+		s.logger.Error("Cannot list questions.", "err", err)
 	}
 
-	gron := gronx.New()
-	now := time.Now().Truncate(1 * time.Minute)
-
 	for _, question := range questions {
-		qlog := logger.With("question", question.ID)
-		due, err := gron.IsDue(question.Cron, now)
+		qlog := s.logger.With("question", question.ID)
+		due, err := s.gron.IsDue(question.Cron, now)
 		if err != nil {
 			qlog.Error("Error while checking cron.", "err", err)
 			continue
@@ -52,12 +52,37 @@ func schedulerTick() {
 	}
 }
 
+func (s *scheduler) tickPeriodicCheck(now time.Time) {
+	due, err := s.gron.IsDue(manualCheckCron, now)
+	if err != nil {
+		s.logger.Error("Error while checking cron.", "err", err)
+		return
+	}
+
+	if due {
+		s.logger.Info("Checking all threads for new messages.")
+		err = CheckAllThreads()
+		if err != nil {
+			s.logger.Error("Error while checking new messages.", "err", err)
+			return
+		}
+	}
+}
+
 func RunScheduler() {
-	time.Sleep(30 * time.Second)
 	defer App.wg.Done()
 
+	sched := scheduler{
+		logger: log.WithPrefix("scheduler"),
+		gron:   gronx.New(),
+	}
+
+	time.Sleep(30 * time.Second)
+
 	for {
-		go schedulerTick()
+		now := time.Now().Truncate(1 * time.Minute)
+		go sched.tickNewQuestions(now)
+		go sched.tickPeriodicCheck(now)
 		time.Sleep(1 * time.Minute)
 	}
 }
