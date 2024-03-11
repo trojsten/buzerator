@@ -19,5 +19,6 @@ FROM alpine
 WORKDIR /app
 
 COPY --from=gobuild /bin/buzerator /bin/buzerator
+ENV TZ=Europe/Bratislava
 
 CMD ["/bin/buzerator"]

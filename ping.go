@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const pingCron = "30 12 * * 1,3,5"
+const pingCron = "10 16 * * 1,3,5"
 
 func PingMissingUsers() error {
 	users := map[string][]string{}
@@ -41,7 +41,7 @@ func PingMissingUsers() error {
 			}
 
 			for user, replied := range qi.Responses {
-				if replied {
+				if !replied {
 					users[user] = append(users[user], qi.Question.Channel)
 				}
 			}
