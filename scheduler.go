@@ -100,6 +100,7 @@ func RunScheduler() {
 		now := time.Now().Truncate(1 * time.Minute)
 		go sched.tickNewQuestions(now)
 		go sched.tickPeriodicCheck(now)
+		go sched.tickPing(now)
 		time.Sleep(1 * time.Minute)
 	}
 }
