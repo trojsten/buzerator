@@ -174,6 +174,10 @@ func (w *webUI) handleQuestionList(ctx *gin.Context) {
 				return err
 			}
 
+			if q.Channel != ctx.Param("channel") {
+				return nil
+			}
+
 			questions = append(questions, q)
 			return nil
 		})
