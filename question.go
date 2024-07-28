@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/pelletier/go-toml/query"
 	bolt "go.etcd.io/bbolt"
 )
 
 type Question struct {
 	ID              uint64   // question unique identifier
+	TeamID          string   // slack team identifier
 	Channel         string   // slack channel identifier
 	Message         string   // question message text
 	Users           []string // involved users

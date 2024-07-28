@@ -3,10 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/slack-go/slack"
-	bolt "go.etcd.io/bbolt"
 	"math/rand"
 	"strings"
+
+	"github.com/slack-go/slack"
+	bolt "go.etcd.io/bbolt"
 )
 
 var Greetings = []string{
@@ -64,15 +65,20 @@ func (qi *QuestionInstance) Message() string {
 
 func (qi *QuestionInstance) PostMessage() error {
 	message := qi.Message()
+	client, ok := App.slack[qi.Question.TeamID]
+	if !ok {
+		return fmt.Errorf("not connected to team %s", qi.Question.TeamID)
+	}
+
 	if qi.Timestamp == "" {
-		_, ts, err := App.slack.PostMessage(qi.Question.Channel, slack.MsgOptionText(message, false))
+		_, ts, err := client.PostMessage(qi.Question.Channel, slack.MsgOptionText(message, false))
 		if err != nil {
 			return err
 		}
 
 		qi.Timestamp = ts
 	} else {
-		_, _, _, err := App.slack.UpdateMessage(qi.Question.Channel, qi.Timestamp, slack.MsgOptionText(message, false))
+		_, _, _, err := client.UpdateMessage(qi.Question.Channel, qi.Timestamp, slack.MsgOptionText(message, false))
 		if err != nil {
 			return err
 		}
@@ -100,7 +106,11 @@ func (qi *QuestionInstance) HandleMessage(user string, timestamp string) error {
 		return err
 	}
 
-	_, err = App.slack.PostEphemeral(qi.Question.Channel, user, slack.MsgOptionText("Ďakujem! ❤️", false), slack.MsgOptionTS(qi.Timestamp))
+	client, ok := App.slack[qi.Question.TeamID]
+	if !ok {
+		return fmt.Errorf("not connected to team %s", qi.Question.TeamID)
+	}
+	_, err = client.PostEphemeral(qi.Question.Channel, user, slack.MsgOptionText("Ďakujem! ❤️", false), slack.MsgOptionTS(qi.Timestamp))
 	return err
 }
 
@@ -108,10 +118,15 @@ func (qi *QuestionInstance) CheckNewMessages() error {
 	cursor := ""
 	hasMore := true
 
+	client, ok := App.slack[qi.Question.TeamID]
+	if !ok {
+		return fmt.Errorf("not connected to team %s", qi.Question.TeamID)
+	}
+
 	for hasMore {
 		var messages []slack.Message
 		var err error
-		messages, hasMore, cursor, err = App.slack.GetConversationReplies(&slack.GetConversationRepliesParameters{
+		messages, hasMore, cursor, err = client.GetConversationReplies(&slack.GetConversationRepliesParameters{
 			ChannelID: qi.Question.Channel,
 			Timestamp: qi.Timestamp,
 			Cursor:    cursor,

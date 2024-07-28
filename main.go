@@ -2,9 +2,10 @@ package main
 
 import (
 	"os"
-)
+	"time"
 
-import "github.com/charmbracelet/log"
+	"github.com/charmbracelet/log"
+)
 
 func main() {
 	err := App.config.Load()
@@ -23,9 +24,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	App.wg.Add(3)
+	App.wg.Add(2)
 	go ConnectSlack()
 	go ServeUI()
 	go RunScheduler()
+
+	<-time.After(5 * time.Second)
 	App.wg.Wait()
 }

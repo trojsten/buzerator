@@ -4,24 +4,27 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/adhocore/gronx"
-	"github.com/charmbracelet/log"
-	"github.com/gin-contrib/multitemplate"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	bolt "go.etcd.io/bbolt"
 	"html/template"
 	"io/fs"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/adhocore/gronx"
+	"github.com/charmbracelet/log"
+	"github.com/gin-contrib/multitemplate"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/slack-go/slack"
+	bolt "go.etcd.io/bbolt"
 )
 
 type WebToken struct {
 	Token     string
 	CreatedAt time.Time
 	Channel   string
+	Team      string
 }
 
 type webUI struct {
@@ -53,8 +56,9 @@ func ServeUI() {
 	}
 	r.StaticFS("/static/", http.FS(staticFs))
 	r.GET("/", ui.handleIndex)
+	r.GET("/callback/", ui.handleCallback)
 
-	g := r.Group("/:channel/:token/", ui.checkToken)
+	g := r.Group("/:team/:channel/:token/", ui.checkToken)
 	g.GET("/", ui.handleQuestionList)
 	g.GET("/new/", ui.handleNewQuestion)
 	g.POST("/new/", ui.handleNewQuestionPost)
@@ -68,10 +72,11 @@ func ServeUI() {
 	}
 }
 
-func (w *webUI) CreateToken(channel string) string {
+func (w *webUI) CreateToken(teamID, channel string) string {
 	token := WebToken{
 		Token:     uuid.NewString(),
 		CreatedAt: time.Now(),
+		Team:      teamID,
 		Channel:   channel,
 	}
 
@@ -81,6 +86,7 @@ func (w *webUI) CreateToken(channel string) string {
 
 func (w *webUI) checkToken(ctx *gin.Context) {
 	token := ctx.Param("token")
+	team := ctx.Param("team")
 	channel := ctx.Param("channel")
 
 	var goodTokens []WebToken
@@ -90,7 +96,7 @@ func (w *webUI) checkToken(ctx *gin.Context) {
 			continue
 		}
 		goodTokens = append(goodTokens, webToken)
-		if webToken.Token == token && webToken.Channel == channel {
+		if webToken.Token == token && webToken.Channel == channel && webToken.Team == team {
 			ok = true
 		}
 	}
@@ -127,7 +133,7 @@ func (w *webUI) error(ctx *gin.Context, err error) {
 }
 
 func (w *webUI) render(ctx *gin.Context, template string, context gin.H) {
-	context["URLPrefix"] = fmt.Sprintf("/%s/%s", ctx.Param("channel"), ctx.Param("token"))
+	context["URLPrefix"] = fmt.Sprintf("/%s/%s/%s", ctx.Param("team"), ctx.Param("channel"), ctx.Param("token"))
 	ctx.HTML(http.StatusOK, template, context)
 }
 
@@ -137,19 +143,15 @@ type userInfo struct {
 	Selected bool
 }
 
-func (w *webUI) listChannelMembers(channel string) ([]userInfo, error) {
-	users, err := ListChannelMembers(channel)
+func (w *webUI) listChannelMembers(teamID string, channel string) ([]userInfo, error) {
+	users, err := ListChannelMembers(teamID, channel)
 	if err != nil {
 		return nil, err
 	}
 	var userInfos []userInfo
 
 	for _, user := range users {
-		if user == App.myUserId {
-			continue
-		}
-
-		name, err := LoadMemberName(user)
+		name, err := LoadMemberName(teamID, user)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +193,7 @@ func (w *webUI) handleQuestionList(ctx *gin.Context) {
 }
 
 func (w *webUI) handleNewQuestion(ctx *gin.Context) {
-	users, err := w.listChannelMembers(ctx.Param("channel"))
+	users, err := w.listChannelMembers(ctx.Param("team"), ctx.Param("channel"))
 	if err != nil {
 		w.error(ctx, fmt.Errorf("could not get channel members: %w", err))
 		return
@@ -227,6 +229,7 @@ func (w *webUI) handleNewQuestionPost(ctx *gin.Context) {
 	}
 
 	question := Question{
+		TeamID:          ctx.Param("team"),
 		Channel:         ctx.Param("channel"),
 		Message:         data.Message,
 		Users:           data.Users,
@@ -240,7 +243,7 @@ func (w *webUI) handleNewQuestionPost(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Redirect(http.StatusFound, fmt.Sprintf("/%s/%s/edit/%d/", ctx.Param("channel"), ctx.Param("token"), question.ID))
+	ctx.Redirect(http.StatusFound, fmt.Sprintf("/%s/%s/%s/edit/%d/", ctx.Param("team"), ctx.Param("channel"), ctx.Param("token"), question.ID))
 }
 
 func (w *webUI) handleEditQuestion(ctx *gin.Context) {
@@ -256,7 +259,7 @@ func (w *webUI) handleEditQuestion(ctx *gin.Context) {
 		return
 	}
 
-	users, err := w.listChannelMembers(question.Channel)
+	users, err := w.listChannelMembers(question.TeamID, question.Channel)
 	if err != nil {
 		w.error(ctx, fmt.Errorf("could not get channel members: %w", err))
 		return
@@ -313,7 +316,7 @@ func (w *webUI) handleEditQuestionPost(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Redirect(http.StatusFound, fmt.Sprintf("/%s/%s/", ctx.Param("channel"), ctx.Param("token")))
+	ctx.Redirect(http.StatusFound, fmt.Sprintf("/%s/%s/%s/", ctx.Param("team"), ctx.Param("channel"), ctx.Param("token")))
 }
 
 func (w *webUI) handleInvokeQuestion(ctx *gin.Context) {
@@ -335,5 +338,28 @@ func (w *webUI) handleInvokeQuestion(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Redirect(http.StatusFound, fmt.Sprintf("/%s/%s/", ctx.Param("channel"), ctx.Param("token")))
+	ctx.Redirect(http.StatusFound, fmt.Sprintf("/%s/%s/%s/", ctx.Param("team"), ctx.Param("channel"), ctx.Param("token")))
+}
+
+func (w *webUI) handleCallback(ctx *gin.Context) {
+	code := ctx.Query("code")
+	resp, err := slack.GetOAuthV2Response(&http.Client{}, App.config.SlackClientID, App.config.SlackClientSecret, code, App.config.RootURL+"/callback/")
+	if err != nil {
+		w.error(ctx, fmt.Errorf("oauth.v2.access: %w", err))
+		return
+	}
+
+	team := Team{
+		ID:    resp.Team.ID,
+		Name:  resp.Team.Name,
+		Token: resp.AccessToken,
+	}
+	team.Save()
+
+	_, ok := App.slack[team.ID]
+	if !ok {
+		go team.Connect()
+	}
+
+	ctx.String(200, "Slack úspešne pripojený.")
 }

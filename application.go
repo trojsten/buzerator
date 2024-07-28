@@ -1,18 +1,18 @@
 package main
 
 import (
+	"sync"
+
 	"github.com/slack-go/slack/socketmode"
 	bolt "go.etcd.io/bbolt"
-	"sync"
 )
 
 var App application
 
 type application struct {
-	db       *bolt.DB
-	slack    *socketmode.Client
-	myUserId string
-	wg       sync.WaitGroup
-	webUI    *webUI
-	config   Config
+	db     *bolt.DB
+	slack  map[string]*socketmode.Client
+	wg     sync.WaitGroup
+	webUI  *webUI
+	config Config
 }

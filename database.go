@@ -1,6 +1,10 @@
 package main
 
-import bolt "go.etcd.io/bbolt"
+import (
+	"encoding/json"
+
+	bolt "go.etcd.io/bbolt"
+)
 
 func OpenDatabase(filename string) error {
 	var err error
@@ -16,6 +20,11 @@ func OpenDatabase(filename string) error {
 		}
 
 		_, err = tx.CreateBucketIfNotExists([]byte("questions"))
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.CreateBucketIfNotExists([]byte("teams"))
 		if err != nil {
 			return err
 		}

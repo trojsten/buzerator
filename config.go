@@ -7,23 +7,21 @@ import (
 )
 
 type Config struct {
-	SlackAppToken string
-	SlackBotToken string
-	RootURL       string
-	ListenAddress string
-	DatabaseFile  string
-	Debug         bool
+	SlackClientID     string
+	SlackClientSecret string
+	SlackAppToken     string
+	RootURL           string
+	ListenAddress     string
+	DatabaseFile      string
+	Debug             bool
 }
 
 func (c *Config) Load() error {
+	c.SlackClientID = os.Getenv("SLACK_CLIENT_ID")
+	c.SlackClientSecret = os.Getenv("SLACK_CLIENT_SECRET")
 	c.SlackAppToken = os.Getenv("SLACK_APP_TOKEN")
 	if !strings.HasPrefix(c.SlackAppToken, "xapp-") {
 		return fmt.Errorf("slack app token should start with xapp")
-	}
-
-	c.SlackBotToken = os.Getenv("SLACK_BOT_TOKEN")
-	if !strings.HasPrefix(c.SlackBotToken, "xoxb-") {
-		return fmt.Errorf("slack bot token should start with xoxb")
 	}
 
 	c.RootURL = os.Getenv("ROOT_URL")
