@@ -31,5 +31,38 @@ func OpenDatabase(filename string) error {
 
 		return nil
 	})
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	if App.config.MigrateToTeam != "" {
+		return migrateDatabase()
+	}
+
+	return nil
+}
+
+func migrateDatabase() error {
+	return App.db.Update(func(tx *bolt.Tx) error {
+		questions := tx.Bucket([]byte("questions"))
+
+		return questions.ForEach(func(k, v []byte) error {
+			var question Question
+			err := json.Unmarshal(v, &question)
+			if err != nil {
+				return err
+			}
+
+			if question.TeamID == "" {
+				question.TeamID = App.config.MigrateToTeam
+			}
+
+			data, err := json.Marshal(question)
+			if err != nil {
+				return err
+			}
+			return questions.Put(k, data)
+		})
+	})
 }

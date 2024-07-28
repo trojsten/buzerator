@@ -14,6 +14,7 @@ type Config struct {
 	ListenAddress     string
 	DatabaseFile      string
 	Debug             bool
+	MigrateToTeam string
 }
 
 func (c *Config) Load() error {
@@ -42,6 +43,8 @@ func (c *Config) Load() error {
 	if os.Getenv("DEBUG") == "true" {
 		c.Debug = true
 	}
+
+	c.MigrateToTeam = os.Getenv("MIGRATE_TEAM")
 
 	return nil
 }
