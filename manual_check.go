@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+
 	"github.com/charmbracelet/log"
+	"github.com/slack-go/slack"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -34,6 +36,16 @@ func CheckAllThreads() error {
 
 	for _, inst := range instances {
 		err = inst.CheckNewMessages()
+		slackErr, ok := err.(slack.SlackErrorResponse)
+		if ok && slackErr.Err == "not_in_channel" {
+			log.Info("I am no longer in the channel. Deleting question.", "question", inst.QuestionID)
+			err := inst.Question.Delete()
+			if err != nil {
+				log.Error("Could not delete question.", "question", inst.QuestionID, "err", err)
+			}
+			continue
+		}
+
 		if err != nil {
 			log.Error("Could not check new messages.", "question", inst.QuestionID, "err", err)
 		}

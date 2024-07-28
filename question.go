@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	bolt "go.etcd.io/bbolt"
 	"strconv"
+
+	"github.com/pelletier/go-toml/query"
+	bolt "go.etcd.io/bbolt"
 )
 
 type Question struct {
@@ -35,6 +37,35 @@ func (q *Question) Save() error {
 		}
 
 		return questionsBucket.Put([]byte(strconv.FormatUint(q.ID, 10)), data)
+	})
+}
+
+func (q *Question) Delete() error {
+	return App.db.Update(func(tx *bolt.Tx) error {
+		instanceBucket := tx.Bucket([]byte("messages"))
+		instances := [][]byte{}
+		instanceBucket.ForEach(func(k, v []byte) error {
+			var qi QuestionInstance
+			err := json.Unmarshal(v, &qi)
+			if err != nil {
+				return err
+			}
+
+			if qi.QuestionID == q.ID {
+				instances = append(instances, k)
+			}
+			return nil
+		})
+
+		for _, instance := range instances {
+			err := instanceBucket.Delete(instance)
+			if err != nil {
+				return err
+			}
+		}
+
+		questionsBucket := tx.Bucket([]byte("questions"))
+		return questionsBucket.Delete([]byte(strconv.FormatUint(q.ID, 10)))
 	})
 }
 
