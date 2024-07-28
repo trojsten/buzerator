@@ -18,6 +18,7 @@ RUN go build -o /bin/buzerator .
 FROM alpine
 WORKDIR /app
 
+RUN apk --no-cache add tzdata
 COPY --from=gobuild /bin/buzerator /bin/buzerator
 ENV TZ=Europe/Bratislava
 
