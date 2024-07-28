@@ -25,7 +25,7 @@ jobs:
         with:
           registry: registry.3sten.sk
           username: github
-          password: ${{ secrets.REGISTRY_TOKEN }}
+          password: ${{ secrets.DEPLOY_REGISTRY_TOKEN }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
