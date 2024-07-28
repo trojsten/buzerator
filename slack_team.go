@@ -27,7 +27,7 @@ func ConnectTeam(team Team) error {
 		slack.OptionAppLevelToken(App.config.SlackAppToken),
 	)
 
-	teamClient := SlackTeamClient{
+	teamClient := &SlackTeamClient{
 		TeamID: team.ID,
 		log:    logger,
 	}
