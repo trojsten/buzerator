@@ -35,6 +35,10 @@ func PingMissingUsers() error {
 				return nil // we ignore this error as it should not really happen, and it should not break the loop
 			}
 
+			if qi.Question.CurrentInstance != qi.Timestamp {
+				return nil
+			}
+
 			posted := time.Unix(int64(ts), 0)
 			if time.Now().Sub(posted) < 24*time.Hour {
 				return nil
