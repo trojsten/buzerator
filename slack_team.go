@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/charmbracelet/log"
 	"github.com/slack-go/slack"
@@ -17,7 +18,12 @@ type SlackTeamClient struct {
 	log       *log.Logger
 }
 
-func ConnectTeam(team Team) error {
+var connectLock sync.Mutex
+
+func prepareTeam(team Team) (*socketmode.SocketmodeHandler, error) {
+	connectLock.Lock()
+	defer connectLock.Unlock()
+
 	logger := log.WithPrefix(fmt.Sprintf("[%s]", team.ID))
 	logger.Debug("Connecting...")
 
@@ -34,7 +40,7 @@ func ConnectTeam(team Team) error {
 
 	resp, err := api.AuthTest()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	teamClient.BotUserID = resp.UserID
 
@@ -53,8 +59,15 @@ func ConnectTeam(team Team) error {
 	socketmodeHandler.Handle(socketmode.EventTypeHello, teamClient.handleHello)
 	socketmodeHandler.Handle(socketmode.EventTypeIncomingError, teamClient.handleError)
 	socketmodeHandler.Handle(socketmode.EventTypeConnectionError, teamClient.handleConnError)
+	return socketmodeHandler, nil
+}
 
-	return socketmodeHandler.RunEventLoop()
+func ConnectTeam(team Team) error {
+	handler, err := prepareTeam(team)
+	if err != nil {
+		return err
+	}
+	return handler.RunEventLoop()
 }
 
 func (st *SlackTeamClient) handleConnecting(evt *socketmode.Event, client *socketmode.Client) {

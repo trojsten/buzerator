@@ -17,7 +17,8 @@ func ConnectSlack() {
 		return
 	}
 
-	for _, team := range teams {
+	for i, _ := range teams {
+		team := teams[i]
 		go team.Connect()
 	}
 }
