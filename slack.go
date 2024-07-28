@@ -5,11 +5,10 @@ import (
 
 	"github.com/charmbracelet/log"
 	"github.com/slack-go/slack"
-	"github.com/slack-go/slack/socketmode"
 )
 
 func ConnectSlack() {
-	App.slack = make(map[string]*socketmode.Client)
+	App.slack = make(map[string]*slack.Client)
 
 	teams, err := ListTeams()
 	if err != nil {
@@ -21,6 +20,8 @@ func ConnectSlack() {
 		team := teams[i]
 		go team.Connect()
 	}
+
+	go commonSlackHandler()
 }
 
 func ListChannelMembers(teamID string, channel string) ([]string, error) {
