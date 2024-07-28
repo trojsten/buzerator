@@ -10,7 +10,7 @@ import (
 
 type scheduler struct {
 	logger *log.Logger
-	gron   gronx.Gronx
+	gron   *gronx.Gronx
 }
 
 func (s *scheduler) tickNewQuestions(now time.Time) {
