@@ -8,7 +8,7 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-FROM golang:1.22-alpine as gobuild
+FROM golang:1.24-alpine as gobuild
 WORKDIR /app
 
 COPY . .
