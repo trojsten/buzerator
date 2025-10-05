@@ -37,8 +37,12 @@ func CheckAllThreads() error {
 	for _, inst := range instances {
 		err = inst.CheckNewMessages()
 		slackErr, ok := err.(slack.SlackErrorResponse)
-		if ok && slackErr.Err == "not_in_channel" {
-			log.Info("I am no longer in the channel. Deleting question.", "question", inst.QuestionID)
+		if ok && (slackErr.Err == "not_in_channel" || slackErr.Err == "channel_not_found") {
+			if slackErr.Err == "not_in_channel" {
+				log.Info("I am no longer in the channel. Deleting question.", "question", inst.QuestionID, "channel", inst.Question.Channel)
+			} else {
+				log.Info("Channel is archived or not found. Deleting question.", "question", inst.QuestionID, "channel", inst.Question.Channel)
+			}
 			err := inst.Question.Delete()
 			if err != nil {
 				log.Error("Could not delete question.", "question", inst.QuestionID, "err", err)

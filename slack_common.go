@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
+	bolt "go.etcd.io/bbolt"
 )
 
 func commonSlackHandler() {
@@ -25,6 +27,7 @@ func commonSlackHandler() {
 	socketmodeHandler := socketmode.NewSocketmodeHandler(client)
 	socketmodeHandler.HandleEvents(slackevents.Message, handleMessage)
 	socketmodeHandler.HandleSlashCommand("/buzerator", handleCommand)
+	socketmodeHandler.HandleEvents(slackevents.ChannelArchive, handleChannelArchive)
 
 	socketmodeHandler.Handle(socketmode.EventTypeConnecting, handleConnecting)
 	socketmodeHandler.Handle(socketmode.EventTypeConnected, handleConnected)
@@ -115,7 +118,7 @@ func handleCommand(evt *socketmode.Event, client *socketmode.Client) {
 	client.Ack(*evt.Request)
 
 	token := App.webUI.CreateToken(ev.TeamID, ev.ChannelID)
-	msg := fmt.Sprintf("Nastavenia tohto kanálu nájdeš tu: %s/%s/%s/%s/", App.config.RootURL, ev.TeamID, ev.ChannelID, token)
+	msg := fmt.Sprintf("Nastavenia tohto kanála nájdeš tu: %s/%s/%s/%s/", App.config.RootURL, ev.TeamID, ev.ChannelID, token)
 	_, err := App.slack[ev.TeamID].PostEphemeral(ev.ChannelID, ev.UserID, slack.MsgOptionText(msg, false))
 	if err != nil {
 		var slackErr slack.SlackErrorResponse
@@ -131,5 +134,55 @@ func handleCommand(evt *socketmode.Event, client *socketmode.Client) {
 		}
 
 		log.Error("Could not send command reply.", "err", err)
+	}
+}
+
+func handleChannelArchive(evt *socketmode.Event, client *socketmode.Client) {
+	eventsAPIEvent, ok := evt.Data.(slackevents.EventsAPIEvent)
+	if !ok {
+		log.Warn("Invalid event data.", "evt", *evt)
+		return
+	}
+	client.Ack(*evt.Request)
+
+	ev, ok := eventsAPIEvent.InnerEvent.Data.(*slackevents.ChannelArchiveEvent)
+	if !ok {
+		log.Warn("Invalid event data.", "ev", *ev)
+		return
+	}
+
+	teamID := eventsAPIEvent.TeamID
+	log.Info("Channel archived, cleaning up questions.", "channel", ev.Channel, "team", teamID, "user", ev.User)
+	cleanupQuestionsForChannel(teamID, ev.Channel)
+}
+
+func cleanupQuestionsForChannel(teamID, channelID string) {
+	var questions []Question
+
+	err := App.db.View(func(tx *bolt.Tx) error {
+		return tx.Bucket([]byte("questions")).ForEach(func(k, v []byte) error {
+			var q Question
+			err := json.Unmarshal(v, &q)
+			if err != nil {
+				return err
+			}
+
+			if q.TeamID == teamID && q.Channel == channelID {
+				questions = append(questions, q)
+			}
+			return nil
+		})
+	})
+	if err != nil {
+		log.Error("Could not list questions for cleanup.", "team", teamID, "channel", channelID, "err", err)
+		return
+	}
+
+	for _, question := range questions {
+		log.Info("Deleting question due to channel archive/bot removal.", "question", question.ID, "team", teamID, "channel", channelID)
+		err := question.Delete()
+		if err != nil {
+			log.Error("Could not delete question during cleanup.", "question", question.ID, "team", teamID, "channel", channelID, "err", err)
+		}
 	}
 }
